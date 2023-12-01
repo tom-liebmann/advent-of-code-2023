@@ -23,6 +23,7 @@ foreach( solution_name ${solution_names} )
 
         set( TARGET_NAME "run_${solution_name}" )
         add_executable( ${TARGET_NAME} )
+        target_compile_features( ${TARGET_NAME} PRIVATE cxx_std_20 )
         add_subdirectory( "${solution_dir}" )
     endif()
 endforeach()
