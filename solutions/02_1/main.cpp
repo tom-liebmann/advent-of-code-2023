@@ -114,7 +114,6 @@ namespace
             auto const draws = split( match[ 2 ], ';' );
             for( auto const& draw : draws )
             {
-                std::cout << "Draw: " << draw << '\n';
                 auto drawObj = CubeDraw{};
                 auto const cubes = split( draw, ',' );
                 for( auto cube : cubes )
