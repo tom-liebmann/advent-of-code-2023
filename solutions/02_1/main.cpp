@@ -5,6 +5,8 @@
 #include <regex>
 #include <vector>
 
+#include <string_utils.hpp>
+
 
 namespace
 {
@@ -43,8 +45,6 @@ namespace
         }
     };
 
-    std::vector< std::string > split( const std::string& s, char delim );
-
     std::vector< Game > parseInput( std::string const& fileName );
 
     bool isValidGame( Game const& game );
@@ -78,20 +78,6 @@ int main( int argc, char** argv )
 
 namespace
 {
-    std::vector< std::string > split( const std::string& s, char delim )
-    {
-        auto result = std::vector< std::string >{};
-        auto stream = std::stringstream{ s };
-
-        auto item = std::string{};
-        while( getline( stream, item, delim ) )
-        {
-            result.push_back( item );
-        }
-
-        return result;
-    }
-
     std::vector< Game > parseInput( std::string const& fileName )
     {
         auto const gamePattern = std::regex{ R"(^Game (\d+): (.*)$)" };

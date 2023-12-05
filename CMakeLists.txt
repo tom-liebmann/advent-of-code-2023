@@ -15,6 +15,11 @@ file( GLOB solution_names
     "${solutions_dir}/*"
 )
 
+# Build utility library
+set( TARGET_NAME "utils" )
+add_library( utils STATIC )
+add_subdirectory( "${CMAKE_CURRENT_LIST_DIR}/utils" )
+
 foreach( solution_name ${solution_names} )
     set( solution_dir "${solutions_dir}/${solution_name}" )
 
@@ -25,6 +30,10 @@ foreach( solution_name ${solution_names} )
         add_executable( ${TARGET_NAME} )
         target_compile_features( ${TARGET_NAME} PRIVATE cxx_std_20 )
         add_subdirectory( "${solution_dir}" )
+
+        target_link_libraries( ${TARGET_NAME} PRIVATE
+            utils
+        )
     endif()
 endforeach()
 
