@@ -31,8 +31,10 @@ foreach( solution_name ${solution_names} )
         target_compile_features( ${TARGET_NAME} PRIVATE cxx_std_20 )
         add_subdirectory( "${solution_dir}" )
 
+        find_package(OpenMP)
         target_link_libraries( ${TARGET_NAME} PRIVATE
             utils
+            OpenMP::OpenMP_CXX
         )
     endif()
 endforeach()
