@@ -21,7 +21,7 @@ std::vector< std::string > split( std::string const& s, char delim )
 
 void iterateNumbers( std::string const& line, NumberCallback const& callback )
 {
-    auto const pattern = std::regex{ R"(\d+)" };
+    auto const pattern = std::regex{ R"([-\d]+)" };
 
     auto begin = std::sregex_iterator{ std::begin( line ), std::end( line ), pattern };
     auto end = std::sregex_iterator{};
