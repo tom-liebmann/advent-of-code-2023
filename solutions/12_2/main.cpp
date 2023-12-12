@@ -10,6 +10,8 @@
 #include <set>
 #include <unordered_set>
 
+#include <omp.h>
+
 
 #include <stream_utils.hpp>
 #include <string_utils.hpp>
@@ -37,49 +39,69 @@ int main( int argc, char** argv )
     auto const fileName = std::string{ argv[ 1 ] };
     auto fileStream = std::ifstream{ fileName };
 
-    auto sum = 0L;
+    auto lines = std::vector< std::string >{};
     iterateLines( fileStream,
                   [ & ]( auto const& line )
                   {
-                      auto const pattern = std::regex{ R"(^([?\.#]+)\s+([\d,]+)$)" };
-                      auto match = std::smatch{};
-                      std::regex_match( line, match, pattern );
-
-                      auto groups = std::vector< int >{};
-                      iterateNumbers( match[ 2 ],
-                                      [ & ]( auto num, auto s, auto l )
-                                      {
-                                          groups.push_back( num );
-                                      } );
-
-                      auto realGroups = groups;
-                      for( int i = 0; i < 4; ++i )
-                      {
-                          for( auto j : groups )
-                          {
-                              realGroups.push_back( j );
-                          }
-                      }
-
-                      auto row = match[ 1 ].str();
-                      row = row + "?" + row + "?" + row + "?" + row + "?" + row;
-
-                      fmt::print( "Row: {}\n", row );
-
-                      auto groupSums = std::vector< int >( realGroups.size(), 0 );
-
-                      for( int i = 0; i < realGroups.size(); ++i )
-                      {
-                          for( int j = 0; j <= i; ++j )
-                          {
-                              groupSums[ j ] += realGroups[ i ];
-                          }
-                      }
-
-                      auto const lineValid = countValid( row, 0, 0, realGroups, 0, groupSums );
-                      fmt::print( "Valid: {}\n", lineValid );
-                      sum += lineValid;
+                      lines.push_back( line );
                   } );
+
+    auto sum = 0L;
+    auto done = 0;
+#pragma omp parallel
+    {
+#pragma omp for schedule( dynamic, 1 )
+        for( std::size_t i = 0; i < lines.size(); ++i )
+        {
+#pragma omp critical
+            {
+                ++done;
+                fmt::print( "Lines done {} / {}\n", done, lines.size() );
+            }
+
+            auto const& line = lines[ i ];
+
+            auto const pattern = std::regex{ R"(^([?\.#]+)\s+([\d,]+)$)" };
+            auto match = std::smatch{};
+            std::regex_match( line, match, pattern );
+
+            auto groups = std::vector< int >{};
+            iterateNumbers( match[ 2 ],
+                            [ & ]( auto num, auto s, auto l )
+                            {
+                                groups.push_back( num );
+                            } );
+
+            auto realGroups = groups;
+            for( int i = 0; i < 4; ++i )
+            {
+                for( auto j : groups )
+                {
+                    realGroups.push_back( j );
+                }
+            }
+
+            auto row = match[ 1 ].str();
+            row = row + "?" + row + "?" + row + "?" + row + "?" + row;
+
+            auto groupSums = std::vector< int >( realGroups.size(), 0 );
+
+            for( int i = 0; i < realGroups.size(); ++i )
+            {
+                for( int j = 0; j <= i; ++j )
+                {
+                    groupSums[ j ] += realGroups[ i ];
+                }
+            }
+
+            auto const lineValid = countValid( row, 0, 0, realGroups, 0, groupSums );
+
+#pragma omp critical
+            {
+                sum += lineValid;
+            }
+        }
+    }
 
     fmt::print( "Sum: {}\n", sum );
 
@@ -96,6 +118,11 @@ namespace
                      std::vector< int > const& groupSums )
     {
         if( groupOffset > groups.size() )
+        {
+            return 0;
+        }
+
+        if( groupOffset == groups.size() && current != 0 )
         {
             return 0;
         }
