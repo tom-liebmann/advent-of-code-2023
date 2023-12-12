@@ -5,6 +5,8 @@
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <numeric>
+#include <ranges>
 #include <regex>
 #include <unordered_set>
 
@@ -46,31 +48,22 @@ int main( int argc, char** argv )
 
     auto const nodes = parseNodes( fileStream );
 
-    auto sharedFactors = std::unordered_map< long, long >{};
-
-    for( auto const& node : nodes )
+    auto const isStart = []( auto const& node )
     {
-        auto const& name = node.first;
-        if( name[ name.size() - 1 ] != 'A' )
-        {
-            continue;
-        }
-        auto const pathLen = computePathLen( instructions, nodes, name );
-        auto const factors = computePrimeFactors( pathLen );
+        return node.first.back() == 'A';
+    };
 
-        for( auto const& f : factors )
-        {
-            sharedFactors[ f.first ] = std::max( sharedFactors[ f.first ], f.second );
-        }
-    }
-
-    auto result = 1L;
-    for( auto const& f : sharedFactors )
+    auto const computeNodePathLen = [ & ]( auto const& node )
     {
-        result *= std::pow( f.first, f.second );
-    }
+        return computePathLen( instructions, nodes, node.first );
+    };
 
-    std::cout << "Node count: " << result << '\n';
+    auto pathLengths =
+        nodes | std::views::filter( isStart ) | std::views::transform( computeNodePathLen );
+
+    auto const result = std::reduce( pathLengths.begin(), pathLengths.end(), 1L, lcm );
+
+    fmt::print( "Result: {}\n", result );
 
     return EXIT_SUCCESS;
 }
