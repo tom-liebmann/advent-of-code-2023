@@ -17,7 +17,8 @@ file( GLOB solution_names
 
 # Build utility library
 set( TARGET_NAME "utils" )
-add_library( utils STATIC )
+add_library( ${TARGET_NAME} STATIC )
+target_compile_features( ${TARGET_NAME} PRIVATE cxx_std_23 )
 add_subdirectory( "${CMAKE_CURRENT_LIST_DIR}/utils" )
 
 foreach( solution_name ${solution_names} )
@@ -28,7 +29,7 @@ foreach( solution_name ${solution_names} )
 
         set( TARGET_NAME "run_${solution_name}" )
         add_executable( ${TARGET_NAME} )
-        target_compile_features( ${TARGET_NAME} PRIVATE cxx_std_20 )
+        target_compile_features( ${TARGET_NAME} PRIVATE cxx_std_23 )
         add_subdirectory( "${solution_dir}" )
 
         find_package(OpenMP)
