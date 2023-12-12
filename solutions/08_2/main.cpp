@@ -102,12 +102,12 @@ namespace
     std::unordered_map< std::string, Node > parseNodes( std::istream& stream )
     {
         auto nodes = std::unordered_map< std::string, Node >{};
-        iterateLines( stream,
-                      [ & ]( auto const& line )
-                      {
-                          auto node = Node::parse( line );
-                          nodes[ node.name ] = node;
-                      } );
+
+        for( auto const& line : readLines( stream ) )
+        {
+            auto node = Node::parse( line );
+            nodes[ node.name ] = node;
+        }
 
         return nodes;
     }
