@@ -8,9 +8,7 @@
 #include <regex>
 #include <unordered_set>
 
-
-#include <stream_utils.hpp>
-#include <string_utils.hpp>
+#include <utils.hpp>
 
 
 namespace
@@ -29,8 +27,6 @@ namespace
     long computePathLen( std::string const& instructions,
                          std::unordered_map< std::string, Node > const& nodes,
                          std::string const& node );
-
-    std::unordered_map< long, long > computePrimeFactors( long n );
 }
 
 
@@ -108,29 +104,6 @@ namespace
                 ++nodeCount;
             }
         }
-    }
-
-    std::unordered_map< long, long > computePrimeFactors( long n )
-    {
-        auto factors = std::unordered_map< long, long >{};
-        while( n % 2 == 0 )
-        {
-            ++factors[ 2 ];
-            n = n / 2;
-        }
-
-        for( int i = 3; i <= sqrt( n ); i = i + 2 )
-        {
-            while( n % i == 0 )
-            {
-                ++factors[ i ];
-                n = n / i;
-            }
-        }
-        if( n > 2 )
-            ++factors[ n ];
-
-        return factors;
     }
 
     std::unordered_map< std::string, Node > parseNodes( std::istream& stream )
