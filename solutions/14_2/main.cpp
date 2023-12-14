@@ -20,65 +20,116 @@
 
 namespace
 {
-    struct Rock
+    enum class Direction
     {
-        int x;
-        int y;
+        NORTH,
+        WEST,
+        SOUTH,
+        EAST,
     };
-
-    bool operator==( Rock const& lhs, Rock const& rhs )
-    {
-        return lhs.x == rhs.x && lhs.y == rhs.y;
-    }
-
-    bool operator<( Rock const& lhs, Rock const& rhs )
-    {
-        if( lhs.x != rhs.x )
-        {
-            return lhs.x < rhs.x;
-        }
-
-        return lhs.y < rhs.y;
-    }
 
     struct Grid
     {
         int width;
         int height;
         std::vector< std::string > rows;
-        std::vector< Rock > rocks;
+        std::size_t hash;
 
-        char& value( int x, int y )
+        int getWidth( Direction dir ) const
+        {
+            switch( dir )
+            {
+                case Direction::NORTH:
+                case Direction::SOUTH:
+                    return width;
+                case Direction::WEST:
+                case Direction::EAST:
+                    return height;
+                default:
+                    throw std::runtime_error( "Unhandled direction" );
+            }
+        }
+
+        int getHeight( Direction dir ) const
+        {
+            switch( dir )
+            {
+                case Direction::NORTH:
+                case Direction::SOUTH:
+                    return height;
+                case Direction::WEST:
+                case Direction::EAST:
+                    return width;
+                default:
+                    throw std::runtime_error( "Unhandled direction" );
+            }
+        }
+
+        char getValue( int x, int y ) const
         {
             return rows[ y ][ x ];
         }
 
-        char value( int x, int y ) const
+        void setValue( int x, int y, Direction dir, char value )
         {
-            return rows[ y ][ x ];
+            switch( dir )
+            {
+                case Direction::NORTH:
+                    rows[ y ][ x ] = value;
+                    break;
+                case Direction::WEST:
+                    rows[ x ][ y ] = value;
+                    break;
+                case Direction::SOUTH:
+                    rows[ height - 1 - y ][ x ] = value;
+                    break;
+                case Direction::EAST:
+                    rows[ x ][ height - 1 - y ] = value;
+                    break;
+                default:
+                    throw std::runtime_error( "Unhandled direction" );
+            }
+        }
+
+        char getValue( int x, int y, Direction dir ) const
+        {
+            switch( dir )
+            {
+                case Direction::NORTH:
+                    return rows[ y ][ x ];
+                case Direction::WEST:
+                    return rows[ x ][ y ];
+                case Direction::SOUTH:
+                    return rows[ height - 1 - y ][ x ];
+                case Direction::EAST:
+                    return rows[ x ][ height - 1 - y ];
+                default:
+                    throw std::runtime_error( "Unhandled direction" );
+            }
+        }
+
+        void moveRock( int ox, int oy, int nx, int ny, Direction dir )
+        {
+            setValue( ox, oy, dir, '.' );
+            setValue( nx, ny, dir, 'O' );
         }
 
         Grid( std::vector< std::string > rowsV )
             : width{ rowsV[ 0 ].length() }, height{ rowsV.size() }, rows{ std::move( rowsV ) }
         {
+            auto hasher = HashComputer{};
             for( int x = 0; x < width; ++x )
             {
                 for( int y = 0; y < height; ++y )
                 {
-                    if( value( x, y ) == 'O' )
+                    if( getValue( x, y ) == 'O' )
                     {
-                        rocks.push_back( Rock{ x, y } );
+                        hasher.push( x );
+                        hasher.push( y );
                     }
                 }
             }
-        }
-
-        void fixRock( int x, int y )
-        {
-            rocks.erase( std::remove( std::begin( rocks ), std::end( rocks ), Rock{ x, y } ),
-                         std::end( rocks ) );
-
-            value( x, y ) = 'U';
+            hash = hasher.getValue();
         }
 
         void print() const
@@ -93,7 +144,7 @@ namespace
 
     Grid loadGrid( std::istream& stream );
 
-    void shiftRocks( Grid& grid, int dx, int dy );
+    void shiftRocks( Grid& grid, Direction dir, std::vector< int >& buffer );
 
     long computeLoad( Grid const& grid );
 }
@@ -115,49 +166,32 @@ int main( int argc, char** argv )
 
     grid.print();
 
-    auto prevRocks = std::vector< std::vector< Rock > >{};
+    auto rockPosCache = std::unordered_map< std::size_t, int >{};
+    auto buffer = std::vector< int >{};
 
     auto finished = false;
     for( int i = 0; i < 1000000000; ++i )
     {
-        shiftRocks( grid, 0, -1 );
-        shiftRocks( grid, -1, 0 );
-        shiftRocks( grid, 0, 1 );
-        shiftRocks( grid, 1, 0 );
+        shiftRocks( grid, Direction::NORTH, buffer );
+        shiftRocks( grid, Direction::WEST, buffer );
+        shiftRocks( grid, Direction::SOUTH, buffer );
+        shiftRocks( grid, Direction::EAST, buffer );
 
-        for( auto j = 0; j < prevRocks.size(); ++j )
+        auto const previousVisit = rockPosCache.find( grid.hash );
+
+        if( previousVisit != std::end( rockPosCache ) )
         {
-            auto const& r = prevRocks[ prevRocks.size() - 1 - j ];
-            auto rockdiff = std::vector< Rock >{};
-            std::set_intersection( std::begin( grid.rocks ),
-                                   std::end( grid.rocks ),
-                                   std::begin( r ),
-                                   std::end( r ),
-                                   std::back_inserter( rockdiff ) );
-
-            if( rockdiff.empty() )
+            fmt::print( "Got loop: {} {}\n", i, previousVisit->second );
+            auto const cycle = i - previousVisit->second;
+            while( i + cycle < 1000000000 )
             {
-                fmt::print( "Finished after {} {}\n", i, j );
-                finished = true;
-                break;
-            }
-            else
-            {
-                fmt::print( "Diff: {}\n", rockdiff.size() );
+                i += cycle;
             }
         }
 
-        if( finished )
-        {
-            break;
-        }
+        rockPosCache.insert( { grid.hash, i } );
 
-        prevRocks.push_back( grid.rocks );
-        grid.print();
-
-        // std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
-
-        fmt::print( "{} {}\n", i, prevRocks.size() );
+        fmt::print( "{} {}\n", i, rockPosCache.size() );
     }
 
     auto const load = computeLoad( grid );
@@ -180,48 +214,44 @@ namespace
         return Grid{ std::move( rows ) };
     }
 
-    void shiftRocks( Grid& grid, int dx, int dy )
+    void shiftRocks( Grid& grid, Direction dir, std::vector< int >& buffer )
     {
-        std::sort( std::begin( grid.rocks ),
-                   std::end( grid.rocks ),
-                   [ & ]( auto const& lhs, auto const& rhs )
-                   {
-                       return lhs.x * dx + lhs.y * dy > rhs.x * dx + rhs.y * dy;
-                   } );
+        auto const width = grid.getWidth( dir );
+        auto const height = grid.getHeight( dir );
 
-        for( auto& r : grid.rocks )
+        if( buffer.size() < width )
         {
-            auto x = r.x;
-            auto y = r.y;
-
-            auto minDist = 0;
-            auto nx = x + dx;
-            auto ny = y + dy;
-            while( true )
-            {
-                if( nx < 0 || nx >= grid.width || ny < 0 || ny >= grid.height )
-                {
-                    break;
-                }
-
-                if( grid.value( nx, ny ) == '.' )
-                {
-                    ++minDist;
-                }
-                else
-                {
-                    break;
-                }
-
-                nx += dx;
-                ny += dy;
-            }
-
-            grid.value( x, y ) = '.';
-            grid.value( x + dx * minDist, y + dy * minDist ) = 'O';
-            r.x = x + dx * minDist;
-            r.y = y + dy * minDist;
+            buffer.resize( width, 0 );
         }
+
+        std::fill( std::begin( buffer ), std::end( buffer ), 0 );
+
+        auto hasher = HashComputer{};
+
+        for( int y = 0; y < height; ++y )
+        {
+            for( int x = 0; x < width; ++x )
+            {
+                auto const value = grid.getValue( x, y, dir );
+
+                switch( value )
+                {
+                    case 'O':
+                        grid.moveRock( x, y, x, y - buffer[ x ], dir );
+                        hasher.push( x );
+                        hasher.push( y - buffer[ x ] );
+                        break;
+                    case '.':
+                        ++buffer[ x ];
+                        break;
+                    case '#':
+                        buffer[ x ] = 0;
+                        break;
+                }
+            }
+        }
+
+        grid.hash = hasher.getValue();
     }
 
     long computeLoad( Grid const& grid )
@@ -232,7 +262,7 @@ namespace
         {
             for( int x = 0; x < grid.width; ++x )
             {
-                if( grid.value( x, y ) == 'O' || grid.value( x, y ) == 'U' )
+                if( grid.getValue( x, y ) == 'O' || grid.getValue( x, y ) == 'U' )
                 {
                     load += grid.height - y;
                 }
