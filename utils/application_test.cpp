@@ -7,11 +7,9 @@
 
 int main( int argc, char** argv )
 {
-    auto const implFile = Application::getAppImplFile();
-
-    for( auto const& [ filename, expectedResult ] : Application::expectedResults() )
+    for( auto const& [ filename, expectedResult ] : Application::EXPECTED_RESULTS )
     {
-        auto const inputFile = implFile.parent_path() / filename;
+        auto const inputFile = Application::APP_IMPL_FILE.parent_path() / filename;
         auto inputStream = std::ifstream{ inputFile };
         auto const result = Application::computeResult( inputStream );
 

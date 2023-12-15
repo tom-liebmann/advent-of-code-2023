@@ -8,6 +8,8 @@
 #include <regex>
 #include <string>
 
+#include <utils.hpp>
+
 
 namespace
 {
@@ -19,41 +21,46 @@ namespace
     };
 }
 
-int main( int argc, char** argv )
+
+std::filesystem::path Application::APP_IMPL_FILE = __FILE__;
+
+ExpectedResults Application::EXPECTED_RESULTS = {
+    { "input_example.txt", 281 },
+    { "input_final.txt", 54728 },
+};
+
+long Application::computeResult( std::istream& inputStream )
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
-
-    auto const fileName = std::string{ argv[ 1 ] };
-
-    auto fileStream = std::ifstream{ fileName };
-
     auto sum = 0L;
     auto line = std::string{};
-    while( std::getline( fileStream, line ) )
+    while( std::getline( inputStream, line ) )
     {
-        auto const digitFound = [ &line ]( auto const& pair ) {
+        auto const digitFound = [ &line ]( auto const& pair )
+        {
             return pair.first != std::end( line );
         };
 
         auto const firstDigit =
-            std::ranges::min( DIGITS | std::views::transform( [ &line ]( auto const& digitEntry ) {
-                                  return std::make_pair(
-                                      std::ranges::search( line, digitEntry.first ).begin(),
-                                      digitEntry.second );
-                              } ) |
+            std::ranges::min( DIGITS |
+                              std::views::transform(
+                                  [ &line ]( auto const& digitEntry )
+                                  {
+                                      return std::make_pair(
+                                          std::ranges::search( line, digitEntry.first ).begin(),
+                                          digitEntry.second );
+                                  } ) |
                               std::views::filter( digitFound ) )
                 .second;
 
         auto const lastDigit =
-            std::ranges::max( DIGITS | std::views::transform( [ &line ]( auto const& digitEntry ) {
-                                  return std::make_pair(
-                                      std::ranges::find_end( line, digitEntry.first ).begin(),
-                                      digitEntry.second );
-                              } ) |
+            std::ranges::max( DIGITS |
+                              std::views::transform(
+                                  [ &line ]( auto const& digitEntry )
+                                  {
+                                      return std::make_pair(
+                                          std::ranges::find_end( line, digitEntry.first ).begin(),
+                                          digitEntry.second );
+                                  } ) |
                               std::views::filter( digitFound ) )
                 .second;
 
@@ -63,7 +70,5 @@ int main( int argc, char** argv )
         sum += firstDigit * 10 + lastDigit;
     }
 
-    std::cout << "Sum: " << sum << '\n';
-
-    return EXIT_SUCCESS;
+    return sum;
 }

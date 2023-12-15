@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iostream>
 
+#include <utils.hpp>
+
 namespace
 {
     bool isDigit( char c );
@@ -11,21 +13,18 @@ namespace
 }
 
 
-int main( int argc, char** argv )
+std::filesystem::path Application::APP_IMPL_FILE = __FILE__;
+
+ExpectedResults Application::EXPECTED_RESULTS = {
+    { "input_example.txt", 142 },
+    { "input_final.txt", 54916 },
+};
+
+long Application::computeResult( std::istream& inputStream )
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
-
-    auto const fileName = std::string{ argv[ 1 ] };
-
-    auto fileStream = std::ifstream{ fileName };
-
     auto sum = 0L;
     auto line = std::string{};
-    while( std::getline( fileStream, line ) )
+    while( std::getline( inputStream, line ) )
     {
         auto const firstDigit = std::find_if( std::begin( line ), std::end( line ), isDigit );
         auto const lastDigit = std::find_if( std::rbegin( line ), std::rend( line ), isDigit );
@@ -33,9 +32,7 @@ int main( int argc, char** argv )
         sum += digitToNumber( *firstDigit ) * 10 + digitToNumber( *lastDigit );
     }
 
-    std::cout << "Sum: " << sum << '\n';
-
-    return EXIT_SUCCESS;
+    return sum;
 }
 
 

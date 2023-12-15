@@ -4,17 +4,17 @@
 #include <iostream>
 #include <regex>
 
+#include <fmt/core.h>
+
+#include <utils.hpp>
+
 
 namespace
 {
     using LineCallback =
         std::function< void( std::string const&, std::string const&, std::string const& ) >;
 
-    void iterateLines( std::string const& fileName, LineCallback const& callback );
-
-    using NumberCallback = std::function< void( int, int, int ) >;
-
-    void iterateNumbers( std::string const& line, NumberCallback const& callback );
+    void iterateLines( std::istream& inputStream, LineCallback const& callback );
 
     using SymbolCallback = std::function< void( int ) >;
 
@@ -22,64 +22,62 @@ namespace
 }
 
 
-int main( int argc, char** argv )
+std::filesystem::path Application::APP_IMPL_FILE = __FILE__;
+
+ExpectedResults Application::EXPECTED_RESULTS = {
+    { "input_example.txt", 4351 },
+    { "input_final.txt", 557705 },
+};
+
+long Application::computeResult( std::istream& inputStream )
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
-
-    auto const fileName = std::string{ argv[ 1 ] };
-
     auto sum = 0L;
 
-    iterateLines( fileName,
+    iterateLines( inputStream,
                   [ & ]( auto const& prevLine, auto const& curLine, auto const& nextLine )
                   {
                       std::cout << "Checking line: " << curLine << '\n';
-                      iterateNumbers( curLine,
-                                      [ & ]( auto num, auto pos, auto len )
-                                      {
-                                          auto isValid = false;
+                      iterateNumbers(
+                          curLine,
+                          [ & ]( auto num, auto pos, auto len )
+                          {
+                              auto isValid = false;
 
-                                          auto const updateValidity = [ & ]( auto symbPos )
-                                          {
-                                              if( symbPos >= pos - 1 && symbPos <= pos + len )
-                                              {
-                                                  isValid = true;
-                                              }
-                                          };
+                              auto const updateValidity = [ & ]( auto symbPos )
+                              {
+                                  if( symbPos >= pos - 1 && symbPos <= pos + len )
+                                  {
+                                      isValid = true;
+                                  }
+                              };
 
-                                          iterateSymbols( prevLine, updateValidity );
-                                          iterateSymbols( curLine, updateValidity );
-                                          iterateSymbols( nextLine, updateValidity );
+                              iterateSymbols( prevLine, updateValidity );
+                              iterateSymbols( curLine, updateValidity );
+                              iterateSymbols( nextLine, updateValidity );
 
-                                          if( isValid )
-                                          {
-                                              std::cout << "Adding " << num << '\n';
-                                              sum += num;
-                                          }
-                                      } );
+                              if( isValid )
+                              {
+                                  std::cout << "Adding " << num << '\n';
+                                  sum += num;
+                              }
+                          },
+                          false );
                   } );
 
-    std::cout << "Sum: " << sum << '\n';
-
-    return EXIT_SUCCESS;
+    return sum;
 }
 
 
 namespace
 {
-    void iterateLines( std::string const& fileName, LineCallback const& callback )
+    void iterateLines( std::istream& inputStream, LineCallback const& callback )
     {
-        auto fileStream = std::ifstream{ fileName };
         auto prevLine = std::string{};
         auto curLine = std::string{};
         auto nextLine = std::string{};
 
         auto line = std::string{};
-        while( std::getline( fileStream, line ) )
+        while( std::getline( inputStream, line ) )
         {
             prevLine = curLine;
             curLine = nextLine;
@@ -94,20 +92,6 @@ namespace
         if( !curLine.empty() )
         {
             callback( curLine, nextLine, "" );
-        }
-    }
-
-    void iterateNumbers( std::string const& line, NumberCallback const& callback )
-    {
-        auto const pattern = std::regex{ R"(\d+)" };
-
-        auto begin = std::sregex_iterator{ std::begin( line ), std::end( line ), pattern };
-        auto end = std::sregex_iterator{};
-
-        for( auto i = begin; i != end; ++i )
-        {
-            auto const match = ( *i );
-            callback( std::stoi( match.str() ), match.position(), match.length() );
         }
     }
 

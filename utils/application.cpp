@@ -13,8 +13,7 @@ int main( int argc, char** argv )
         return EXIT_FAILURE;
     }
 
-    auto const implFile = Application::getAppImplFile();
-    auto const inputFile = implFile.parent_path() / argv[ 1 ];
+    auto const inputFile = Application::APP_IMPL_FILE.parent_path() / argv[ 1 ];
     auto inputStream = std::ifstream{ inputFile };
 
     auto const result = Application::computeResult( inputStream );

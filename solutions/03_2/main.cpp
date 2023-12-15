@@ -4,17 +4,15 @@
 #include <iostream>
 #include <regex>
 
+#include <utils.hpp>
+
 
 namespace
 {
     using LineCallback =
         std::function< void( std::string const&, std::string const&, std::string const& ) >;
 
-    void iterateLines( std::string const& fileName, LineCallback const& callback );
-
-    using NumberCallback = std::function< void( int, int, int ) >;
-
-    void iterateNumbers( std::string const& line, NumberCallback const& callback );
+    void iterateLines( std::istream& inputStream, LineCallback const& callback );
 
     using SymbolCallback = std::function< void( int ) >;
 
@@ -22,19 +20,18 @@ namespace
 }
 
 
-int main( int argc, char** argv )
+std::filesystem::path Application::APP_IMPL_FILE = __FILE__;
+
+ExpectedResults Application::EXPECTED_RESULTS = {
+    { "input_example.txt", 467835 },
+    { "input_final.txt", 84266818 },
+};
+
+long Application::computeResult( std::istream& inputStream )
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
-
-    auto const fileName = std::string{ argv[ 1 ] };
-
     auto sum = 0L;
 
-    iterateLines( fileName,
+    iterateLines( inputStream,
                   [ & ]( auto const& prevLine, auto const& curLine, auto const& nextLine )
                   {
                       iterateSymbols( curLine,
@@ -51,9 +48,9 @@ int main( int argc, char** argv )
                                               }
                                           };
 
-                                          iterateNumbers( prevLine, collectNumbers );
-                                          iterateNumbers( curLine, collectNumbers );
-                                          iterateNumbers( nextLine, collectNumbers );
+                                          iterateNumbers( prevLine, collectNumbers, false );
+                                          iterateNumbers( curLine, collectNumbers, false );
+                                          iterateNumbers( nextLine, collectNumbers, false );
 
                                           if( numbers.size() == 2 )
                                           {
@@ -68,23 +65,20 @@ int main( int argc, char** argv )
                                       } );
                   } );
 
-    std::cout << "Sum: " << sum << '\n';
-
-    return EXIT_SUCCESS;
+    return sum;
 }
 
 
 namespace
 {
-    void iterateLines( std::string const& fileName, LineCallback const& callback )
+    void iterateLines( std::istream& inputStream, LineCallback const& callback )
     {
-        auto fileStream = std::ifstream{ fileName };
         auto prevLine = std::string{};
         auto curLine = std::string{};
         auto nextLine = std::string{};
 
         auto line = std::string{};
-        while( std::getline( fileStream, line ) )
+        while( std::getline( inputStream, line ) )
         {
             prevLine = curLine;
             curLine = nextLine;
@@ -99,20 +93,6 @@ namespace
         if( !curLine.empty() )
         {
             callback( curLine, nextLine, "" );
-        }
-    }
-
-    void iterateNumbers( std::string const& line, NumberCallback const& callback )
-    {
-        auto const pattern = std::regex{ R"(\d+)" };
-
-        auto begin = std::sregex_iterator{ std::begin( line ), std::end( line ), pattern };
-        auto end = std::sregex_iterator{};
-
-        for( auto i = begin; i != end; ++i )
-        {
-            auto const match = ( *i );
-            callback( std::stoi( match.str() ), match.position(), match.length() );
         }
     }
 

@@ -5,6 +5,7 @@
 #include <regex>
 #include <vector>
 
+#include <utils.hpp>
 
 namespace
 {
@@ -38,23 +39,22 @@ namespace
 
     std::vector< std::string > split( const std::string& s, char delim );
 
-    std::vector< Game > parseInput( std::string const& fileName );
+    std::vector< Game > parseInput( std::istream& inputStream );
 
     bool isValidGame( Game const& game );
 }
 
 
-int main( int argc, char** argv )
+std::filesystem::path Application::APP_IMPL_FILE = __FILE__;
+
+ExpectedResults Application::EXPECTED_RESULTS = {
+    { "input_example.txt", 2286 },
+    { "input_final.txt", 71220 },
+};
+
+long Application::computeResult( std::istream& inputStream )
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
-
-    auto const fileName = std::string{ argv[ 1 ] };
-
-    auto const games = parseInput( fileName );
+    auto const games = parseInput( inputStream );
 
     auto sum = 0;
     for( auto const& game : games )
@@ -62,7 +62,7 @@ int main( int argc, char** argv )
         sum += game.getPower();
     }
 
-    std::cout << "Sum: " << sum << '\n';
+    return sum;
 }
 
 
@@ -82,16 +82,15 @@ namespace
         return result;
     }
 
-    std::vector< Game > parseInput( std::string const& fileName )
+    std::vector< Game > parseInput( std::istream& inputStream )
     {
         auto const gamePattern = std::regex{ R"(^Game (\d+): (.*)$)" };
         auto const cubePattern = std::regex{ R"(^\s*(\d*)\s*(red|blue|green)\s*$)" };
 
         auto games = std::vector< Game >{};
 
-        auto fileStream = std::ifstream{ fileName };
         auto line = std::string{};
-        while( std::getline( fileStream, line ) )
+        while( std::getline( inputStream, line ) )
         {
             auto match = std::smatch{};
             if( !std::regex_match( line, match, gamePattern ) )

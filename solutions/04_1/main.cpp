@@ -6,6 +6,8 @@
 #include <regex>
 #include <unordered_set>
 
+#include <utils.hpp>
+
 
 namespace
 {
@@ -28,25 +30,20 @@ namespace
         }
     };
 
-    using NumberCallback = std::function< void( int, int, int ) >;
-
-    void iterateNumbers( std::string const& line, NumberCallback const& callback );
-
-    std::vector< Card > parseInput( std::string const& fileName );
+    std::vector< Card > parseInput( std::istream& inputStream );
 }
 
 
-int main( int argc, char** argv )
+std::filesystem::path Application::APP_IMPL_FILE = __FILE__;
+
+ExpectedResults Application::EXPECTED_RESULTS = {
+    { "input_example.txt", 13 },
+    { "input_final.txt", 22488 },
+};
+
+long Application::computeResult( std::istream& inputStream )
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
-
-    auto const fileName = std::string{ argv[ 1 ] };
-
-    auto const cards = parseInput( fileName );
+    auto const cards = parseInput( inputStream );
 
     auto sum = 0L;
 
@@ -55,9 +52,7 @@ int main( int argc, char** argv )
         sum += card.getWorth();
     }
 
-    std::cout << "Sum: " << sum << '\n';
-
-    return EXIT_SUCCESS;
+    return sum;
 }
 
 
@@ -77,27 +72,12 @@ namespace
         return result;
     }
 
-    void iterateNumbers( std::string const& line, NumberCallback const& callback )
-    {
-        auto const pattern = std::regex{ R"(\d+)" };
-
-        auto begin = std::sregex_iterator{ std::begin( line ), std::end( line ), pattern };
-        auto end = std::sregex_iterator{};
-
-        for( auto i = begin; i != end; ++i )
-        {
-            auto const match = ( *i );
-            callback( std::stoi( match.str() ), match.position(), match.length() );
-        }
-    }
-
-    std::vector< Card > parseInput( std::string const& fileName )
+    std::vector< Card > parseInput( std::istream& inputStream )
     {
         auto cards = std::vector< Card >{};
         auto const pattern = std::regex{ R"(^Card\s+\d+:(.*)\|(.*)$)" };
-        auto fileStream = std::ifstream{ fileName };
         auto line = std::string{};
-        while( std::getline( fileStream, line ) )
+        while( std::getline( inputStream, line ) )
         {
             auto match = std::smatch{};
             if( !std::regex_match( line, match, pattern ) )

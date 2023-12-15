@@ -4,12 +4,14 @@
 #include <unordered_map>
 
 
+using ExpectedResults = std::unordered_map< std::string, long >;
+
 class Application
 {
 public:
-    static std::filesystem::path getAppImplFile();
+    static std::filesystem::path APP_IMPL_FILE;
 
-    static std::unordered_map< std::string, long > expectedResults();
+    static ExpectedResults EXPECTED_RESULTS;
 
     static long computeResult( std::istream& inputStream );
 };
