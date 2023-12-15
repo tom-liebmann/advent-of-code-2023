@@ -2,7 +2,6 @@ target_sources( ${TARGET_NAME} PRIVATE
     string_utils.cpp
     stream_utils.cpp
     math_utils.cpp
-    application.cpp
 )
 
 target_include_directories( ${TARGET_NAME} PUBLIC

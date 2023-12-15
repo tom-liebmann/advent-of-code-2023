@@ -155,6 +155,14 @@ std::filesystem::path Application::getAppImplFile()
     return __FILE__;
 }
 
+std::unordered_map< std::string, long > Application::expectedResults()
+{
+    return {
+        { "input_example_1.txt", 64 },
+        { "input_final.txt", 100876 },
+    };
+}
+
 long Application::computeResult( std::istream& inputStream )
 {
     auto grid = loadGrid( inputStream );
