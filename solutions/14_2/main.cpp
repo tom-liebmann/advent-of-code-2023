@@ -150,19 +150,14 @@ namespace
 }
 
 
-int main( int argc, char** argv )
+std::filesystem::path Application::getAppImplFile()
 {
-    if( argc < 2 )
-    {
-        std::cerr << "Missing parameter: <input file>\n";
-        return EXIT_FAILURE;
-    }
+    return __FILE__;
+}
 
-    auto const fileName = std::string{ argv[ 1 ] };
-    auto fileStream = std::ifstream{ fileName };
-
-
-    auto grid = loadGrid( fileStream );
+long Application::computeResult( std::istream& inputStream )
+{
+    auto grid = loadGrid( inputStream );
 
     grid.print();
 
@@ -194,11 +189,7 @@ int main( int argc, char** argv )
         fmt::print( "{} {}\n", i, rockPosCache.size() );
     }
 
-    auto const load = computeLoad( grid );
-
-    fmt::print( "Load: {}\n", load );
-
-    return EXIT_SUCCESS;
+    return computeLoad( grid );
 }
 
 namespace

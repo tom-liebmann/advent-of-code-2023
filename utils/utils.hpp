@@ -1,3 +1,4 @@
+#include <application.hpp>
 #include <hash_utils.hpp>
 #include <math_utils.hpp>
 #include <std_generator.hpp>
