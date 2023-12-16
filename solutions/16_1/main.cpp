@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
@@ -139,18 +140,6 @@ namespace
             }
         }
 
-        auto sum = 0L;
-        for( int y = 0; y < grid.getHeight(); ++y )
-        {
-            for( int x = 0; x < grid.getWidth(); ++x )
-            {
-                if( energized( x, y ) )
-                {
-                    ++sum;
-                }
-            }
-        }
-
-        return sum;
+        return std::ranges::count( energized.getValues(), true );
     }
 }
