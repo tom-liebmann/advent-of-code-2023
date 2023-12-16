@@ -29,36 +29,7 @@ namespace
         DOWN = 8,
     };
 
-    struct Grid
-    {
-        int width;
-        int height;
-        std::vector< std::string > rows;
-
-        std::vector< bool > energized;
-        std::vector< std::uint8_t > visited;
-
-        bool inGrid( int x, int y ) const
-        {
-            return x >= 0 && x < width && y >= 0 && y < height;
-        }
-
-        std::size_t idx( int x, int y ) const
-        {
-            return x + y * width;
-        }
-
-        Grid( std::vector< std::string > rows )
-            : width{ static_cast< int >( rows[ 0 ].size() ) }
-            , height{ static_cast< int >( rows.size() ) }
-            , rows{ std::move( rows ) }
-        {
-            energized.resize( width * height, false );
-            visited.resize( width * height, 0 );
-        }
-
-        static Grid load( std::istream& stream );
-    };
+    long computeEnergized( Grid< char > const& grid, Dir dir, int x, int y );
 }
 
 
@@ -71,100 +42,115 @@ ExpectedResults Application::EXPECTED_RESULTS = {
 
 long Application::computeResult( std::istream& inputStream )
 {
-    auto grid = Grid::load( inputStream );
+    auto const grid = readGrid( inputStream );
 
-    struct Tile
-    {
-        Dir dir;
-        int x;
-        int y;
-    };
-
-    auto tileQueue = std::queue< Tile >{};
-    tileQueue.push( Tile{ Dir::RIGHT, 0, 0 } );
-
-    while( !tileQueue.empty() )
-    {
-        auto const tile = tileQueue.front();
-        tileQueue.pop();
-
-        if( !grid.inGrid( tile.x, tile.y ) )
-        {
-            continue;
-        }
-
-        if( grid.visited[ grid.idx( tile.x, tile.y ) ] & static_cast< std::uint8_t >( tile.dir ) )
-        {
-            continue;
-        }
-
-        grid.energized[ grid.idx( tile.x, tile.y ) ] = true;
-        grid.visited[ grid.idx( tile.x, tile.y ) ] |= static_cast< std::uint8_t >( tile.dir );
-
-        auto const value = grid.rows[ tile.y ][ tile.x ];
-
-        switch( tile.dir )
-        {
-            case Dir::RIGHT:
-                if( value == '-' || value == '.' )
-                    tileQueue.push( Tile{ tile.dir, tile.x + 1, tile.y } );
-                if( value == '/' || value == '|' )
-                    tileQueue.push( Tile{ Dir::UP, tile.x, tile.y - 1 } );
-                if( value == '\\' || value == '|' )
-                    tileQueue.push( Tile{ Dir::DOWN, tile.x, tile.y + 1 } );
-                break;
-            case Dir::UP:
-                if( value == '|' || value == '.' )
-                    tileQueue.push( Tile{ tile.dir, tile.x, tile.y - 1 } );
-                if( value == '\\' || value == '-' )
-                    tileQueue.push( Tile{ Dir::LEFT, tile.x - 1, tile.y } );
-                if( value == '/' || value == '-' )
-                    tileQueue.push( Tile{ Dir::RIGHT, tile.x + 1, tile.y } );
-                break;
-            case Dir::LEFT:
-                if( value == '-' || value == '.' )
-                    tileQueue.push( Tile{ tile.dir, tile.x - 1, tile.y } );
-                if( value == '\\' || value == '|' )
-                    tileQueue.push( Tile{ Dir::UP, tile.x, tile.y - 1 } );
-                if( value == '/' || value == '|' )
-                    tileQueue.push( Tile{ Dir::DOWN, tile.x, tile.y + 1 } );
-                break;
-            case Dir::DOWN:
-                if( value == '|' || value == '.' )
-                    tileQueue.push( Tile{ tile.dir, tile.x, tile.y + 1 } );
-                if( value == '/' || value == '-' )
-                    tileQueue.push( Tile{ Dir::LEFT, tile.x - 1, tile.y } );
-                if( value == '\\' || value == '-' )
-                    tileQueue.push( Tile{ Dir::RIGHT, tile.x + 1, tile.y } );
-                break;
-        }
-    }
-
-    auto sum = 0L;
-    for( int y = 0; y < grid.height; ++y )
-    {
-        for( int x = 0; x < grid.width; ++x )
-        {
-            if( grid.energized[ grid.idx( x, y ) ] )
-            {
-                ++sum;
-            }
-        }
-    }
-
-    return sum;
+    return computeEnergized( grid, Dir::RIGHT, 0, 0 );
 }
 
 namespace
 {
-    Grid Grid::load( std::istream& stream )
+    long computeEnergized( Grid< char > const& grid, Dir dir, int x, int y )
     {
-        auto rows = std::vector< std::string >{};
-        iterateLines( stream,
-                      [ & ]( std::string const& line )
-                      {
-                          rows.push_back( line );
-                      } );
-        return { std::move( rows ) };
+        static auto const NEXT_DIRS = std::map< Dir, std::map< char, std::vector< Dir > > >{
+            { Dir::RIGHT,
+              {
+                  { '-', { Dir::RIGHT } },
+                  { '|', { Dir::UP, Dir::DOWN } },
+                  { '.', { Dir::RIGHT } },
+                  { '/', { Dir::UP } },
+                  { '\\', { Dir::DOWN } },
+              } },
+            { Dir::UP,
+              {
+                  { '-', { Dir::LEFT, Dir::RIGHT } },
+                  { '|', { Dir::UP } },
+                  { '.', { Dir::UP } },
+                  { '/', { Dir::RIGHT } },
+                  { '\\', { Dir::LEFT } },
+              } },
+            { Dir::LEFT,
+              {
+                  { '-', { Dir::LEFT } },
+                  { '|', { Dir::UP, Dir::DOWN } },
+                  { '.', { Dir::LEFT } },
+                  { '/', { Dir::DOWN } },
+                  { '\\', { Dir::UP } },
+              } },
+            { Dir::DOWN,
+              {
+                  { '-', { Dir::LEFT, Dir::RIGHT } },
+                  { '|', { Dir::DOWN } },
+                  { '.', { Dir::DOWN } },
+                  { '/', { Dir::LEFT } },
+                  { '\\', { Dir::RIGHT } },
+              } },
+        };
+
+        auto energized = Grid< std::uint8_t >{ grid.getWidth(), grid.getHeight(), false };
+        auto visited = Grid< std::uint8_t >{ grid.getWidth(), grid.getHeight(), 0 };
+
+        struct Tile
+        {
+            Dir dir;
+            int x;
+            int y;
+        };
+
+        auto tileQueue = std::queue< Tile >{};
+        tileQueue.push( Tile{ dir, x, y } );
+
+        while( !tileQueue.empty() )
+        {
+            auto const tile = tileQueue.front();
+            tileQueue.pop();
+
+            if( !grid.isInside( tile.x, tile.y ) )
+            {
+                continue;
+            }
+
+            if( visited( tile.x, tile.y ) & static_cast< std::uint8_t >( tile.dir ) )
+            {
+                continue;
+            }
+
+            energized( tile.x, tile.y ) = true;
+            visited( tile.x, tile.y ) |= static_cast< std::uint8_t >( tile.dir );
+
+            auto const value = grid( tile.x, tile.y );
+
+            for( auto const nextDir : NEXT_DIRS.at( tile.dir ).at( value ) )
+            {
+                switch( nextDir )
+                {
+                    case Dir::RIGHT:
+                        tileQueue.push( Tile{ nextDir, tile.x + 1, tile.y } );
+                        break;
+                    case Dir::UP:
+                        tileQueue.push( Tile{ nextDir, tile.x, tile.y - 1 } );
+                        break;
+                    case Dir::LEFT:
+                        tileQueue.push( Tile{ nextDir, tile.x - 1, tile.y } );
+                        break;
+                    case Dir::DOWN:
+                        tileQueue.push( Tile{ nextDir, tile.x, tile.y + 1 } );
+                        break;
+                }
+            }
+        }
+
+        auto sum = 0L;
+        for( int y = 0; y < grid.getHeight(); ++y )
+        {
+            for( int x = 0; x < grid.getWidth(); ++x )
+            {
+                if( energized( x, y ) )
+                {
+                    ++sum;
+                }
+            }
+        }
+
+        return sum;
     }
 }

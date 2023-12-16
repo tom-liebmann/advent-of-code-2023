@@ -16,9 +16,11 @@ public:
 
     std::size_t getHeight() const;
 
-    TType const& getValue( std::size_t x, std::size_t y ) const;
+    bool isInside( std::size_t x, std::size_t y ) const;
 
-    void setValue( std::size_t x, std::size_t y, TType value );
+    TType const& operator()( std::size_t x, std::size_t y ) const;
+
+    TType& operator()( std::size_t x, std::size_t y );
 
 private:
     std::size_t m_width;
@@ -55,13 +57,19 @@ inline std::size_t Grid< TType >::getHeight() const
 }
 
 template < typename TType >
-TType const& Grid< TType >::getValue( std::size_t x, std::size_t y ) const
+inline bool Grid< TType >::isInside( std::size_t x, std::size_t y ) const
+{
+    return x >= 0 && x < m_width && y >= 0 && y < m_height;
+}
+
+template < typename TType >
+TType const& Grid< TType >::operator()( std::size_t x, std::size_t y ) const
 {
     return m_values[ x + y * m_width ];
 }
 
 template < typename TType >
-void Grid< TType >::setValue( std::size_t x, std::size_t y, TType value )
+TType& Grid< TType >::operator()( std::size_t x, std::size_t y )
 {
-    m_values[ x + y * m_width ] = std::move( value );
+    return m_values[ x + y * m_width ];
 }
